@@ -1,0 +1,342 @@
+---
+title: "Descriptive Stat Facial Self-Touches Study"
+output: pdf_document
+date: '2025-07-15'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+```
+
+
+```{r, echo=FALSE}
+root_dir <- getwd()
+project_directory<-dirname(root_dir)
+curated_data_dir <- file.path(project_directory, 'data')
+plot_dir <- file.path(project_directory, 'plots')
+script_dir<- file.path(project_directory, 'scripts')
+```
+
+
+
+```{r, echo=FALSE}
+file_name = 'model_data.csv'
+Model_Data <-read.csv(file.path(curated_data_dir, file_name), stringsAsFactors = FALSE)
+Activity_Data = Model_Data[, c(2, 23:27)]
+Activity_Data = melt(Activity_Data)
+
+```
+
+
+# Figure 5
+
+```{r fig5, echo=FALSE, fig.height=5.5, fig.width=8.5}
+
+Facial_Data = Model_Data[, c(2, 4, 34:40)]
+
+Facial_Data_final = cbind(Facial_Data[,c(1:2, 6, 7,9)], rowSums(Facial_Data[,c(3:5,8)]))
+colnames(Facial_Data_final)[6]<-c("F_Neg")
+
+
+colnames(Facial_Data_final) = c("Day", "PP", "F_Pos", "F_Sad", "F_Neutral", "F_Neg")
+
+
+PP_Data = Facial_Data_final[, c(1,2)]
+PP_Data = melt(PP_Data)
+
+
+PP = ggplot(data = PP_Data, aes(x = variable, y = value)) +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    strip.background = element_rect(fill = "black"),
+    strip.text.x = element_text(size = 14, face = "bold"),
+    strip.text = element_text(color = "white")
+  ) +
+  facet_grid(cols = vars(Day)) +
+  scale_x_discrete(limits = c("PP"),
+                   labels = expression(bar(Delta * bold(ln * bolditalic(PP)))))
+
+
+Facial_Data_final = Facial_Data_final[, c(1,3:6)]
+Facial_Data_final = melt(Facial_Data_final)
+
+
+modified_ticks = c(
+  "F_Pos" = expression(bolditalic(V['+'])),
+  "F_Sad" = expression(bolditalic(V[S])),
+  "F_Neutral" = expression(bolditalic(V[N])),
+  "F_Neg" = expression(bolditalic(V['-']))
+  )
+
+valence = ggplot(data = Facial_Data_final, aes(x = variable, y = value)) +
+  #geom_boxplot() +
+    geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    strip.text.x = element_blank()
+  ) + facet_grid(cols = vars(Day)) +  scale_x_discrete(limits = c("F_Neutral",
+                              "F_Sad",
+                              "F_Neg",
+                              "F_Pos"),
+                   labels = modified_ticks) + scale_y_continuous(breaks = c(0, 0.5, 1))
+
+
+figure3 = plot_grid(PP, valence, nrow = 2, labels = c('a', 'b'),  scale = c(.95, .95),
+                      label_size = 20  # Increase this value to make labels bigger
+                    )
+figure3
+
+
+
+filename = 'Figure5.pdf'
+
+full_path <- file.path(plot_dir, filename)
+ggsave(
+  full_path,
+  figure3,
+  width = 8.5,
+  height = 5.5,
+  units = "in"
+)
+```
+
+
+
+# Figure 6
+
+```{r echo=FALSE, fig.height=7, fig.width=4}
+
+modified_ticks = c(
+  "RW" = expression(bolditalic(T[RW])),
+  "SA" = expression(bolditalic(T[SA])),
+  "SP" = expression(bolditalic(T[SP])),
+  "I" = expression(bolditalic(T[I])),
+  "Out" = expression(bolditalic(T[Out]))
+  )
+
+Activity_Plot = ggplot(data = Activity_Data, aes(x = variable, y = value)) +
+  #geom_boxplot() +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  labs(title = "[ % ]") +
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    plot.title = element_blank(),
+    strip.text.y = element_blank()
+  ) + facet_grid(rows = vars(Day)) + scale_x_discrete(limits = c("RW",
+                              "SA",
+                              "SP",
+                              "I",
+                              "Out"),
+                   labels = modified_ticks)
+#Activity_Plot
+```
+
+
+
+```{r echo=FALSE, fig.height=7, fig.width=4}
+Out_Data = Model_Data[, c(2, 29)]
+Out_Data = melt(Out_Data)
+
+
+modified_ticks = c(
+  # "tOut" = expression(bar(bolditalic(t))[bolditalic(out)]),
+  "fOut" = expression(bolditalic(f[out])))
+
+Out_plot = ggplot(data = Out_Data, aes(x = variable, y = value)) +
+  #geom_boxplot() +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  labs(title = "[ s ]") +
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    plot.title = element_blank(),
+    # axis.title.y = element_text(size = 10, face = "bold"),
+    strip.text.y = element_blank()
+  ) + facet_grid(rows = vars(Day)) + 
+  scale_x_discrete(limits = c("fOut"), labels = modified_ticks)+
+   scale_y_continuous(breaks = c(0, 0.4, 0.8, 1.1))
+
+#Out_plot
+```
+
+```{r, echo=FALSE}
+file_name = 'Biographic_Trait_Data.csv'
+Data <-read.csv(file.path(curated_data_dir, file_name), stringsAsFactors = FALSE)
+
+Data = Data[, c(34, 36:40)]
+colnames(Data) = c("TA", "B5_A", "B5_C", "B5_E", "B5_N", "B5_O")
+
+Data = melt(Data)
+BFI_Data = Data %>% filter(variable != "TA")
+TA_Data = Data %>% filter(variable == "TA")
+```
+
+
+```{r, echo=FALSE}
+
+modified_ticks = c(
+  "B5_A" = expression(bolditalic(B5[A])),
+  "B5_C" = expression(bolditalic(B5[C])),
+  "B5_E" = expression(bolditalic(B5[E])),
+  "B5_N" = expression(bolditalic(B5[N])),
+  "B5_O" = expression(bolditalic(B5[O])))
+ 
+  
+BFI_Plot = ggplot(data = BFI_Data, aes(x = variable, y = value)) +
+ #geom_boxplot() +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) + scale_x_discrete(limits = c("B5_A",
+                                  "B5_C",
+                                  "B5_E",
+                                  "B5_N",
+                                  "B5_O"),
+                       labels = modified_ticks) + scale_y_continuous(limits = c(10, 50))
+
+
+
+Trait_plot = ggplot(data = TA_Data, aes(x = variable, y = value)) +
+ #geom_boxplot() +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) + scale_x_discrete(limits = c("TA"),
+                       labels = expression(bolditalic(TA))) + scale_y_continuous(limits = c(20, 80))
+```
+
+
+
+```{r, echo=FALSE}
+file_name = 'State_Daily.csv'
+State_Data <-read.csv(file.path(curated_data_dir, file_name), stringsAsFactors = FALSE)
+
+State_Data$Participant_ID = NULL
+
+
+NASA_DATA = State_Data[, c(1:7)]
+NASA_DATA = melt(NASA_DATA)
+State_Data = State_Data[, c(1, 8:9)]
+State_Data = melt(State_Data)
+```
+
+
+
+
+```{r echo=FALSE, fig.height=7, fig.width=4}
+
+modified_ticks = c(
+  "N_MD" = expression(bolditalic(N[MD])),
+  "N_PD" = expression(bolditalic(N[PD])),
+  "N_TD" = expression(bolditalic(N[TD])),
+  "N_P" = expression(bolditalic(N[P])),
+  "N_E" = expression(bolditalic(N[E])),
+  "N_F" = expression(bolditalic(N[F]))
+  )
+
+
+
+NASA_Plots = ggplot(data = NASA_DATA,  aes(x = variable, y = value)) +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 12, face = "bold"),
+    axis.text.x = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) + scale_x_discrete(limits = c("N_MD",
+                                  "N_PD",
+                                  "N_TD",
+                                  "N_P",
+                                  "N_E",
+                                  "N_F"),
+                       labels = modified_ticks) +
+  facet_grid(rows = vars(Day)) + theme(strip.text.y = element_blank())
+
+
+modified_ticks = c(expression(bolditalic(SA[M])), expression(bolditalic(SA[E])))
+
+SA_PLot = ggplot(data = State_Data,  aes(x = variable, y = value)) +
+  #geom_boxplot() +
+  geom_violin(trim = TRUE, fill = "white", color = "black") +  # Violin plot styling
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    strip.text.y = element_text(size = 16, face = "bold"),
+        strip.background = element_rect(fill = "black"),
+    strip.text = element_text(color = "white")
+  ) + facet_grid(rows = vars(Day)) + 
+  scale_x_discrete(limits = c("SA_B", "SA_E"), labels = modified_ticks)
+
+```
+
+
+
+```{r echo=FALSE, fig.height=11, fig.width=8.5}
+
+final_plot = plot_grid(
+  Activity_Plot, Out_plot, NASA_Plots, SA_PLot,
+  labels = c('a', 'b', 'c', 'd'),
+  nrow = 1,
+  scale = c(.95, .95, .95, .95),
+  rel_widths = c(2, 1, 2.5, 1.5),
+  label_size = 20  # Increase this value to make labels bigger
+)
+final_plot
+
+filename = 'Figure6.pdf'
+
+full_path <- file.path(plot_dir, filename)
+ggsave(
+  full_path,
+  final_plot,
+  width = 8.5,
+  height = 11,
+  units = "in"
+)
+```
+
+

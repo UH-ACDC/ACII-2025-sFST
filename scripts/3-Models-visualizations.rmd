@@ -1,0 +1,594 @@
+---
+title: "Model and visualizations"
+output: 
+  pdf_document: 
+    toc: true
+date: '2025-07-15'
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+library(car)
+library(MASS)
+library(sjPlot)
+library(ggcorrplot)
+library(lmerTest)
+library(lme4)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(ggpubr)
+library(cowplot)
+library(jtools)
+```
+
+\newpage
+```{r, echo=FALSE}
+root_dir <- getwd()
+project_directory<-dirname(root_dir)
+curated_data_dir <- file.path(project_directory, 'data')
+plot_dir <- file.path(project_directory, 'plots')
+script_dir<- file.path(project_directory, 'scripts')
+```
+
+```{r, echo=FALSE, warning=FALSE}
+file_name= 'model_data.csv'
+tmpData0<-read.csv(file.path(curated_data_dir, file_name), stringsAsFactors = FALSE) 
+
+
+file_name_t= 'Touches_Daily.csv'
+tmpDataTouch<-read.csv(file.path(curated_data_dir, file_name_t), stringsAsFactors = FALSE)
+
+names(tmpDataTouch)[1]<-"Participant_ID"
+merged_data = merge(tmpData0, tmpDataTouch, by = c("Participant_ID", "Day"))
+
+tmpD0<-tmpData0
+tmpD0<-tmpD0[,-c(1,3,34:42)]
+```
+
+```{r, echo=FALSE, warning=FALSE}
+
+P_ID = c(rep("P001", 4), rep("P003", 4), rep("P005", 4), rep("P007", 4), rep("P009", 4), rep("P011", 4), rep("P013", 4), rep("P015", 4), rep("P017", 4), rep("P019", 4))
+
+tmpD0<-cbind(tmpD0,tmpData0[,37],tmpData0[,38],rowSums(tmpData0[,c(34:36,39)]),tmpData0[,40])
+colnames(tmpD0)[32:35]<-c("Hap","Sad","Neg","Neu")
+
+```
+
+```{r echo=FALSE}
+
+library(ggcorrplot)
+library(ggplot2)
+library(dplyr)
+
+# prepare your data
+tmpDataTouch_corr <- tmpDataTouch %>% dplyr::select(-c(1, 2, 7))
+corr <- round(cor(tmpDataTouch_corr), 1)
+
+# define your custom labels
+modified_ticks_touches <- c(
+  "FChe"     = expression(bolditalic(FChe)),
+  "FCheChi"  = expression(bolditalic(FCheChi)),
+  "FCheChiN" = expression(bolditalic(FCheChiN)),
+  "FChi"     = expression(bolditalic(FChi)),
+  "Others"   = expression(bolditalic(Others))
+)
+
+# make explicit x and y scales
+scale_x_touches <- scale_x_discrete(
+  limits = names(modified_ticks_touches),
+  labels = modified_ticks_touches
+)
+scale_y_touches <- scale_y_discrete(
+  limits = names(modified_ticks_touches),
+  labels = modified_ticks_touches
+)
+
+# build the plot
+corplt_touches <- ggcorrplot(
+    corr,
+    #type     = "upper",
+    outline.col = "white",
+    ggtheme  = theme_bw(),
+    colors   = c("#6D9EC1", "white", "#E46726"),
+    lab      = TRUE,
+    lab_size = 5,
+    title    = "Touches correlation plot"
+  ) +
+  scale_x_touches +
+  scale_y_touches +
+  theme(
+    panel.grid       = element_blank(),
+    axis.text.x      = element_text(size = 10, angle = 60, hjust = 1),
+    axis.text.y      = element_text(size = 10),
+    legend.title     = element_blank(),
+    plot.title       = element_blank()
+  )
+
+# save it
+# filename <- "Correlation_plot_touches.pdf"
+# full_path <- file.path(plot_dir, filename)
+# ggsave(
+#   full_path,
+#   corplt_touches,
+#   width  = 5.5,
+#   height = 5.5,
+#   units  = "in"
+# )
+
+
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+Scaled_Data = tmpD0 [,c("Day", "G", "R", "PP", "TA" , "T_D" , "SA_B" , "SA_E" , "N_MD" , "N_PD" , "N_P" , "RW" , "SA" , "SP" , "I" , "tOut" , "fOut" , "Sad" , "Neg" , "Neu")]
+Scaled_Data = Scaled_Data %>% mutate_at(c(4,20), funs(c(scale(.))))
+
+Scaled_Data$Day = as.factor(Scaled_Data$Day)
+Scaled_Data$G = as.factor(Scaled_Data$G)
+Scaled_Data$R = as.factor(Scaled_Data$R)
+```
+
+```{r include=FALSE}
+
+str(tmpDataTouch)
+str(Scaled_Data)
+
+tmpDataTouch$Day = as.factor(tmpDataTouch$Day)
+
+merged_data = bind_cols(tmpD0,tmpDataTouch)
+                    
+names(merged_data)
+
+names(merged_data)[1] = "Day"
+names(merged_data)
+
+tmpD0 = merged_data %>% dplyr::select(-c(37))
+
+names(tmpD0)
+```
+
+```{r echo=FALSE, fig.height=9.5, fig.width=9.5, warning=FALSE}
+
+Corr_Data = tmpD0
+Day_factor = factor(Corr_Data$Day)
+Corr_Data$Day = as.numeric(Day_factor)
+Corr_Data = Corr_Data %>% dplyr::select(-c(6:11, 24, 28:31, 36))
+
+names(Corr_Data)
+
+corr <- round(cor(Corr_Data), 1)
+modified_ticks = c(
+  "PP" = expression(bar(Delta*bold(ln*bolditalic(PP)))),
+  "RW" = expression(bolditalic(T[RW])),
+  "SA" = expression(bolditalic(T[SA])),
+  "SP" = expression(bolditalic(T[SP])),
+  "I" = expression(bolditalic(T[I])),
+  "T_D" = expression(bolditalic(T[D])),
+  
+  "fOut" = expression(bolditalic(f[Out])),
+  "tOut" = expression(bolditalic(bar(t)[Out])),
+  "Sad" = expression(bolditalic(DE[S])),
+  "Neg" = expression(bolditalic(DE['-'])),
+  "Hap" = expression(bolditalic(DE['+'])),
+  "Neu" = expression(bolditalic(DE['N'])),
+  
+  
+  "Day" = expression(bolditalic(D)),
+  "SA_B" = expression(bolditalic(SA[M])),
+  "SA_E" = expression(bolditalic(SA[E])),
+  "N_MD" = expression(bolditalic(N[MD])),
+  "N_PD" = expression(bolditalic(N[PD])),
+  "N_TD" = expression(bolditalic(N[TD])),
+  "N_P" = expression(bolditalic(N[P])),
+  "N_E" = expression(bolditalic(N[E])),
+  "N_F" = expression(bolditalic(N[F])),
+
+
+  "G" = expression(bolditalic(G)),
+  "R" = expression(bolditalic(R)),
+  "TA" = expression(bolditalic(TA)),
+  
+  "FChe" = expression(bolditalic(FChe)),
+  "FCheChi" = expression(bolditalic(FCheChi)),
+  "FCheChiN" = expression(bolditalic(FCheChiN)),
+  "FChi" = expression(bolditalic(FChi)),
+  #"NoTouch" = expression(bolditalic(NoTouch)),
+  "Others" = expression(bolditalic(Others))
+)
+
+library(corrplot)
+corplt_diagonal = ggcorrplot(corr,
+  type = "upper",
+  outline.col = "white",
+  ggtheme = ggplot2::theme_bw(),
+  colors = c("#6D9EC1", "white", "#E46726"),
+  lab = TRUE,
+  lab_size = 3,
+  # label = TRUE,
+  title = "Correlation plot"
+  # diag = TRUE
+)+ theme(
+  panel.grid = element_blank(),
+  axis.text.x = element_text(size = 12, angle = 60),
+  axis.text.y = element_text(size = 12),
+  legend.title = element_blank(),
+  plot.title = element_blank(),
+  legend.position = c(.85, .7)
+) + scale_x_discrete(
+  # position = "top",
+    limits = c(
+      "Day",
+      "PP",
+      "G",
+      "R",
+      "TA",
+      "T_D",
+      "SA_B",
+      "SA_E",
+      "N_MD",
+      "N_PD",
+      "N_TD",    
+      "N_P",
+      "N_E",
+      "N_F",     
+      "RW",
+      "SA",
+      "SP",
+      "I",
+      "tOut",   
+      "fOut",
+      "Hap",
+      "Sad",
+      "Neg",
+      "FChe",
+      "FCheChi",
+      "FCheChiN",
+      "FChi",
+      #"NoTouch",
+      "Others"
+      
+    ),
+    labels = modified_ticks
+  ) + scale_y_discrete(
+    limits = c(
+      "Others",
+      #"NoTouch",
+      "FChi",
+      "FCheChiN",
+      "FCheChi",
+      "FChe",
+      "Neg",
+      "Sad",
+      "Hap",
+      "fOut",
+      "I",
+      "SP",
+      "SA",
+      "RW",
+      "N_F",
+      "N_E",
+      "N_P",
+      "N_TD",
+      "N_PD",
+      "N_MD",
+      "SA_E",
+      "SA_B",
+      "T_D",
+      "TA",
+      "R",
+      "G",
+      "PP",
+      "Day"
+      
+    ),
+    labels = modified_ticks
+  ) + geom_rect(mapping=aes(xmin=17.5, xmax=18.5, ymin=7.5, ymax=8.5), color="black", fill=NA) +
+  geom_rect(mapping=aes(xmin=10.5, xmax=11.5, ymin=14.5, ymax=15.5), color="black", fill=NA) +
+  geom_rect(mapping=aes(xmin=8.5, xmax=9.5, ymin=16.5, ymax=17.5), color="black", fill=NA) +
+  geom_rect(mapping=aes(xmin=8.5, xmax=9.5, ymin=14.5, ymax=15.5), color="black", fill=NA) +
+  geom_rect(mapping=aes(xmin=7.5, xmax=8.5, ymin=13.5, ymax=14.5), color="black", fill=NA) 
+
+
+corplt_diagonal
+
+# filename <- "Correlation_plot.pdf"
+# full_path <- file.path(plot_dir, filename)
+# ggsave(
+#   full_path,
+#   corplt_diagonal,
+#   width = 9.5,
+#   height = 9.5,
+#   units = "in"
+# )
+```
+
+\newpage
+
+## Null Model
+
+```{r, echo=FALSE, warning=FALSE}
+NullModel <- lmer(PP ~ 1 + (1 | P_ID), data = Scaled_Data)
+summary(NullModel)
+```
+
+\newpage
+
+## Full Model
+
+```{r echo=FALSE, warning=FALSE}
+
+FullModel <-
+  lmer(
+    PP ~ 1 + Day + G + R + TA + T_D + SA_B + SA_E + N_MD + N_PD + N_P + RW + SA + SP +
+      I + tOut + fOut + Sad + Neg + Neu +  
+      FChe + FCheChi + FCheChiN + FChi + Others + (1 | P_ID),
+    data = tmpD0
+  )
+
+summary(FullModel)
+
+```
+
+\newpage
+&nbsp;
+
+## Get Final Model
+
+```{r, echo=FALSE, warning=FALSE}
+step_fm <- step(FullModel)
+step_fm
+
+final_fm <- get_model(step_fm)
+final_fm
+```
+
+\newpage
+## Final Model(Backward)
+
+```{r echo=FALSE, warning=FALSE}
+
+FM = lmer( PP ~ N_PD + RW + SP + fOut + FCheChiN + (1|P_ID), data = tmpD0)
+summary(FM)
+#anova(FM)
+
+cat("\nis FM final model Singular?", "\n")
+lme4::isSingular(FM) # If it returns TRUE, then your model is singular, meaning that P_ID does not meaningfully contribute variance.
+
+```
+
+&nbsp;
+\newpage
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+summ(FM, digits = 4)
+```
+
+
+&nbsp;
+\newpage
+
+
+## Final Model without Random Effects
+
+```{r echo=FALSE}
+
+FM_fixed <- lm(PP ~ N_PD + RW + SP + fOut + FCheChiN, data = tmpD0)
+summary(FM_fixed)
+#drop1(FM_fixed)
+summ(FM_fixed, digits = 4)
+```
+
+
+## Final Model without  Touches
+
+
+```{r echo=FALSE, warning=FALSE}
+
+FM_wout_touch = lmer( PP ~ N_PD + RW + SP + fOut + (1|P_ID), data = tmpD0)
+summary(FM_wout_touch)
+FM_wout_touch
+```
+
+
+
+
+&nbsp;
+\newpage
+
+## AIC values of Full Final Fixed, Final_model
+
+```{r, echo=FALSE, warning=FALSE}
+AIC(FullModel, FM, FM_fixed, FM_wout_touch)
+```
+
+
+```{r,echo=FALSE, warning=FALSE}
+library(cowplot)
+levels = c("A", "B", "C")
+num = c(5, 10, 15)
+ymin = c(0, 0, 0)
+ymax = c(1, 2, 3)
+
+Legend_DF = data.frame(levels, num, ymin, ymax)
+
+
+
+Legend_Plot <- ggplot(Legend_DF, aes(x = levels, y = num, colour = levels)) +
+  geom_errorbar(aes(ymin = ymin, ymax = ymax), size = 1.1) +
+  theme_bw() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 10),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.title = element_blank(),
+    legend.key.width = unit(2, 'cm'),
+    legend.text = element_text(size = 20)
+  ) +
+  theme(axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_color_manual(
+    values = c("#4CAEE3", "#ee9a00", "red"),
+    breaks = c("A", "B", "C"),
+    labels = c("*     ", "**     ", "***")
+  ) 
+#print(Legend_Plot)
+
+mylegend <- ggpubr::get_legend(Legend_Plot)
+```
+
+\newpage
+
+## Model Plot
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(latex2exp)
+
+library(ggeffects)
+library(scales)
+
+model_theme = theme_bw() +  theme(panel.grid = element_blank(),
+        axis.title.y = element_blank(),
+        plot.title = element_blank(),
+        axis.text.x = element_text(size = 10, face = "bold"),
+        #axis.text.y = element_text(size = 10, face = "bold"),
+        axis.text.y =  element_blank(),
+        legend.position = "none"
+        )
+
+blue = "#4CAEE3" # *
+orange = "#ee9a00" # **
+
+ylim_min = -0.4
+ylim_max = 0.6
+
+plot1 = ggpredict(FM, "RW") %>%
+  ggplot(aes(x, predicted)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+  geom_line(colour = orange, size = 2) +
+    geom_vline(
+    xintercept = mean(tmpD0$RW, na.rm = TRUE),
+    linetype = "dashed",
+    color = "gray",
+    size = 1
+  ) + model_theme + 
+  theme(axis.title.y = element_text(size = 10, face = "bold", angle = 90),
+        axis.text.y = element_text(size = 10, face = "bold"))+
+  labs(y = expression(bar(Delta*bold(ln*bolditalic(PP)))), x = expression(italic(T[RW])~paste('[ % ]')))  +
+  coord_cartesian(ylim = c(ylim_min, ylim_max)) +
+  scale_y_continuous(
+    breaks = seq(ylim_min, ylim_max, by = 0.3),
+    labels = label_number()  # Use this to format y-axis labels as regular numbers
+  )
+
+
+plot2 = ggpredict(FM, "SP") %>%
+      ggplot(aes(x, predicted)) +
+      geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+      geom_line(colour = orange, size = 2) +
+        geom_vline(
+        xintercept = mean(tmpD0$SP, na.rm = TRUE),
+        linetype = "dashed",
+        color = "gray",
+        size = 1
+      ) + model_theme +
+      labs( x = expression(italic(T[SP])~paste('[ % ]'))) +
+    #ylim(limits = c(-0.55, 0.55))
+  coord_cartesian(ylim = c(ylim_min, ylim_max)) +
+  scale_y_continuous(
+    breaks = seq(ylim_min, ylim_max, by = 0.3),
+    labels = label_number()  # Use this to format y-axis labels as regular numbers
+  )
+
+
+
+plot3 = ggpredict(FM, "fOut") %>%
+      ggplot(aes(x, predicted)) +
+      geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+      geom_line(colour = "red", size = 2) +
+        geom_vline(
+        xintercept = mean(tmpD0$fOut, na.rm = TRUE),
+        linetype = "dashed",
+        color = "gray",
+        size = 1
+      ) + model_theme +
+  labs( x = expression(italic(f[out])~ paste('[ breaks / hour ]')) , parse = TRUE) +
+#    ylim(limits = c(-0.55, 0.55))
+  coord_cartesian(ylim = c(ylim_min, ylim_max)) +
+  scale_y_continuous(
+    breaks = seq(ylim_min, ylim_max, by = 0.3),
+    labels = label_number()  # Use this to format y-axis labels as regular numbers
+  )
+  
+plot4 = ggpredict(FM, "N_PD") %>%
+      ggplot(aes(x, predicted)) +
+      geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+      geom_line(colour = blue, size = 2) +
+        geom_vline(
+        xintercept = mean(tmpD0$FCheChiN, na.rm = TRUE),
+        linetype = "dashed",
+        color = "gray",
+        size = 1
+      ) + model_theme + 
+  # theme(axis.title.y = element_text(size = 10, face = "bold", angle = 90),
+  #       axis.text.y = element_text(size = 10, face = "bold"))+
+  labs( y = expression(bar(Delta*bold(ln*bolditalic(PP)))), x = expression(italic(N[PD])~ paste('')) ) +
+  coord_cartesian(ylim = c(ylim_min, ylim_max)) +
+  scale_y_continuous(
+    breaks = seq(ylim_min, ylim_max, by = 0.3),
+    labels = label_number()  # Use this to format y-axis labels as regular numbers
+  )
+
+plot5 = ggpredict(FM, "FCheChiN") %>%
+      ggplot(aes(x, predicted)) +
+      geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2) +
+      geom_line(colour = orange, size = 2) +
+        geom_vline(
+        xintercept = mean(tmpD0$FCheChiN, na.rm = TRUE),
+        linetype = "dashed",
+        color = "gray",
+        size = 1
+      ) + model_theme +
+  #labs( x = expression(italic(FCheChiN)~ paste('[ % ]')) , parse = TRUE) +
+  labs( x = TeX(r'(\textit{$F_{CheChiN}}$)') , parse = TRUE) +
+  coord_cartesian(ylim = c(ylim_min, ylim_max)) +
+  scale_y_continuous(
+    breaks = seq(ylim_min, ylim_max, by = 0.3),
+    labels = label_number()  # Use this to format y-axis labels as regular numbers
+  )
+
+```
+
+```{r echo=FALSE, fig.height=3.5, fig.width=10.5}
+
+model_plots123 = ggarrange(plot1, plot2, plot3,  ncol = 3,nrow = 1)
+
+model_plots45 = ggarrange(plot4, plot5, ncol = 3, nrow = 1)
+
+model_plots12345 = ggarrange(plot1, plot2, plot3, plot4,plot5, ncol = 5, nrow = 1)
+
+final_plot = cowplot::plot_grid(model_plots12345, mylegend,  nrow = 2, rel_heights = c(.97,.1))
+final_plot
+
+filename <- "Figure7.pdf"
+full_path <- file.path(plot_dir, filename)
+ggsave(
+  full_path,
+  final_plot,
+  width = 8.5,
+ height = 3.5,
+  units = "in"
+)
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+g <- ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y))
+g+ xlab( expression(paste("Value is ", sigma,",", R^{2},'=0.6'))) + 
+  annotate('text', x = 0, y = 0, label = expression(italic(f[out])~ paste('[ breaks / hour ]')) , parse = TRUE)
+```
