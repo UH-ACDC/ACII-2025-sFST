@@ -6,6 +6,20 @@ output:
 date: '2025-07-15'
 ---
 
+
+
+```{r cairo_times_setup_models, include=FALSE}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(Cairo)        # provides cairo_pdf
+  library(systemfonts)
+})
+base_family <- "Times"
+theme_set(theme_bw(base_family = base_family) + theme(text = element_text(family = base_family)))
+update_geom_defaults("text",  list(family = base_family))
+update_geom_defaults("label", list(family = base_family))
+```
+
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(reshape2)
@@ -111,13 +125,12 @@ corplt_touches <- ggcorrplot(
 # save it
 # filename <- "Correlation_plot_touches.pdf"
 # full_path <- file.path(plot_dir, filename)
-# ggsave(
-#   full_path,
+# ggsave(#   full_path,
 #   corplt_touches,
 #   width  = 5.5,
 #   height = 5.5,
 #   units  = "in"
-# )
+# , device = cairo_pdf)
 
 
 ```
@@ -298,13 +311,12 @@ corplt_diagonal
 
 # filename <- "Correlation_plot.pdf"
 # full_path <- file.path(plot_dir, filename)
-# ggsave(
-#   full_path,
+# ggsave(#   full_path,
 #   corplt_diagonal,
 #   width = 9.5,
 #   height = 9.5,
 #   units = "in"
-# )
+# , device = cairo_pdf)
 ```
 
 \newpage
@@ -578,17 +590,31 @@ final_plot
 
 filename <- "Figure7.pdf"
 full_path <- file.path(plot_dir, filename)
-ggsave(
-  full_path,
+ggsave(full_path,
   final_plot,
   width = 8.5,
  height = 3.5,
   units = "in"
-)
+, device = cairo_pdf)
 ```
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 g <- ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y))
 g+ xlab( expression(paste("Value is ", sigma,",", R^{2},'=0.6'))) + 
   annotate('text', x = 0, y = 0, label = expression(italic(f[out])~ paste('[ breaks / hour ]')) , parse = TRUE)
+```
+
+
+```{r fonts_device_setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(Cairo)
+library(systemfonts)
+base_family <- "Times"
+theme_set(theme_bw(base_family = base_family) + theme(text = element_text(family = base_family)))
+update_geom_defaults("text",  list(family = base_family))
+update_geom_defaults("label", list(family = base_family))
+# Force ggsave to use cairo unless explicitly overridden
+ggsave_cairo <- function(filename, plot = last_plot(), ...) {
+  ggsave(filename, plot = plot, device = cairo_pdf, ...)
+}
 ```
